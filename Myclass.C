@@ -842,37 +842,36 @@ void Myclass::Loop()
     startposz_ME->Draw();
 }
     
-    
+//The function that draws a single histogram + add entry to the legend    
 void Myclass::DrawSingleCanvas(TCanvas *canvas1,TH1F *histo,TString label, TLegend *leg1)
     {
-        canvas1->cd();
-        histo->GetXaxis()->SetTitle(label);
-        histo->GetYaxis()->SetRangeUser(-10, histo->GetMaximum()*1.1);
-        histo->Draw();
-        // startposx_FV->Draw("same");
-        //  startposx_stp_trk->Draw("same");
-        //legend
-        leg1->AddEntry(histo, label, "lep");
-        //leg1->AddEntry(startposx_FV,"x position, Fid Vol", "lep");
-        // leg1->AddEntry(startposx_stp_trk,"x position, Stopping Trks", "lep");
+        canvas1->cd(); //sets current canvas
+        histo->GetXaxis()->SetTitle(label);  //set the title of histo
+        histo->GetYaxis()->SetRangeUser(-10, histo->GetMaximum()*1.1); //formatting the y-axis 
+        histo->Draw(); 
+        leg1->AddEntry(histo, label, "lep"); //add the histogram label to the legend 
         leg1->Draw();
         
     }
     
-    
+//The function that draws a second histogram in the same canvas on top of the first one.
+//This function can be repeatedly used if there's a third or fourth histogram that needs
+//to be overlayed on top.
 void Myclass::DrawSecondHistOnCanvas(TCanvas *canvas1,TH1F *histo,TString label, Color_t color, TLegend *leg1)
     {
-        canvas1->cd();
-        histo->SetLineColor(color);
-        histo->Draw("same");
-        leg1->AddEntry(histo, label, "lep");
+        canvas1->cd(); //sets current canvas
+        histo->SetLineColor(color); //sets a different color to the histo from last function
+        histo->Draw("same"); //this will make the histo to be drawn on the same canvas as previous
+        leg1->AddEntry(histo, label, "lep"); //add the histo label to the legend
         leg1->Draw();
         //canvas->GetLegend->AddEntry(histo, label, "lep");
     }
-    
+ 
+//The function that draws an empty legend
 TLegend* Myclass::InitializeLegend(TCanvas *canvas1)
     {
-        canvas1 -> cd();
+        canvas1 -> cd(); //sets current canvas
+        //create and format the empty legend
         TLegend *leg1 = new TLegend(0.55, 0.8, 0.9, 0.9);
         leg1 -> SetBorderSize(0);
         leg1 -> SetFillStyle(0);
