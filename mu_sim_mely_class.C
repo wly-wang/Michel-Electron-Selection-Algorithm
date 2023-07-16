@@ -147,7 +147,7 @@ void mu_sim_mely_class::Loop()
     TProfile* h_mu_ly_mc_x = new TProfile("h_mu_ly_mc_x","Total Light Yield Measurement Using MC Muon (True)",10,-1,257,"");
     
     //empty histo for Muon-Michel gap distance histo
-    TH1F* h_mu_michel_gap = new TH1F("h_mu_michel_gap","Muon-Michel electron Gap Distance",100,0,50);
+    TH1F* h_mu_michel_gap = new TH1F("h_mu_michel_gap","Muon-Michel electron Gap Distance",100,0,1000);
     
     //empty histo for storing selected Michel information
     TH1F* h_startposx_michel = new TH1F("h_startposx_michel","Michel Electron Start Position (x)",100,-1,257);
@@ -171,11 +171,36 @@ void mu_sim_mely_class::Loop()
     unique_ptr<TFile> myFile(TFile::Open("sim_analyz_outputs.root", "RECREATE"));
     cout << "An empty .root file created for storing output plots." << endl;
     
+    //now define a set of geometric variables that'll be used for the selection
+    float low_edge_x = 0;
+    float high_edge_x = 256.4;
+    float bottom_edge_y = -116.5;
+    float top_edge_y = 116.5;
+    float low_edge_z = 0;
+    float high_edge_z = 1036.8;
+    
+    float FV_low_x = 10;
+    float FV_high_x = 246.4;
+    float FV_low_z = 10;
+    float FV_high_z = 1026.8;
+    
+    float mu_st_from_top_low_y = 110;
+    float mu_st_from_top_high_y = 116.5;
+    float mu_st_end_in_FV_y = -110;
+    
+    float michel_FV_low_y = -106.5;
+    float michel_FV_high_y = 106.5;
+    
+    //create and open txt file for storing Michel electron events in the first tall bin in reco LY
+    fstream file1;
+    file1.open("1st_bin_reco_LY_Michel_info.txt", ios::app | ios::out);
+    
+    
    //getting all the event entries from the TTree
    Long64_t nentries = fChain->GetEntriesFast();
    Long64_t nbytes = 0, nb = 0;
    //the loop that loops through all of the event entries in the TTree
-   for (Long64_t jentry=0; jentry<10;jentry++)
+   for (Long64_t jentry=0; jentry<nentries;jentry++)
    {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
@@ -244,7 +269,7 @@ void mu_sim_mely_class::Loop()
            mcE = (*mc_E)[itrack] * 1000.; //convert to MeV
            
            //Selection on the reconstruction variables (i.e. start/end position, recoE in this case for now) to make sure all our position values are reasonable and within the detector volume
-           if(stposx>0 && stposy>-116.5 && stposz>0 && endposx>0 && endposy>-116.5 && endposz>0 && trk_recoE_y>-1)
+           if(stposx>low_edge_x && stposy>bottom_edge_y && stposz>low_edge_z && endposx>low_edge_x && endposy>bottom_edge_y && endposz>low_edge_z && trk_recoE_y>-1)
            {
                //track length of each tracks can be calculated with default distance formula (made into a function)
                trklen = calc_len(stposx,stposy,stposz,endposx,endposy,endposz);
@@ -273,7 +298,7 @@ void mu_sim_mely_class::Loop()
                h_reco_trk_E -> Fill(trk_recoE_y);
                
                //fiducial volume selection (AV) (drift & beam dir)
-               if(stposx>10 && stposx<246.4 && endposx>10 && endposx<246.4 && stposz>10 && stposz<1026.8 && endposz>10 && endposz<1026.8 && trk_recoE_y!=0)
+               if(stposx>FV_low_x && stposx<FV_high_x && endposx>FV_low_x && endposx<FV_high_x && stposz>FV_low_z && stposz<FV_high_z && endposz>FV_low_z && endposz<FV_high_z && trk_recoE_y!=0)
                {
                    h_startposx_fv -> Fill(stposx);
                    h_startposy_fv -> Fill(stposy);
@@ -284,7 +309,7 @@ void mu_sim_mely_class::Loop()
                    h_reco_trk_len_fv -> Fill(trklen);
                
                    //we would like to select only tracks coming into the detector from the top and stopping within the AV
-                   if(stposy > 110 && stposy < 116.5 && endposy>-110)
+                   if(stposy>mu_st_from_top_low_y && stposy<mu_st_from_top_high_y && endposy>mu_st_end_in_FV_y)
                    {
                        h_startposx_st -> Fill(stposx);
                        h_startposy_st -> Fill(stposy);
@@ -309,13 +334,6 @@ void mu_sim_mely_class::Loop()
                            h_mu_trk_E -> Fill(trk_recoE_y);
                            h2d_mu_mc_v_reco_E -> Fill(mcE,trk_recoE_y);
                            
-                           //here when all selections are satisfied, set goodmuexists to true and store the muon endpoints into pre-defined vector for Michel electron selection usage
-                           GoodMuExists = true;
-                           mu_endposx.push_back(endposx);
-                           mu_endposy.push_back(endposx);
-                           mu_endposz.push_back(endposx);
-                           
-                           goodmuonindex.push_back(itrack);
                            
             /*————————————————————————————————————————————————
               here starts the light yield measurement for the
@@ -353,6 +371,14 @@ void mu_sim_mely_class::Loop()
                             
                            }//end of muon flash-matching condition
                            
+                           //here when all selections are satisfied, set goodmuexists to true and store the muon endpoints into pre-defined vector for Michel electron selection usage
+                           GoodMuExists = true;
+                           mu_endposx.push_back(endposx);
+                           mu_endposy.push_back(endposy);
+                           mu_endposz.push_back(endposz);
+                           
+                           goodmuonindex.push_back(itrack);
+                           
                        }//end of muon identification condition
                        
                    } //end of stopping track selection condition
@@ -365,6 +391,7 @@ void mu_sim_mely_class::Loop()
        /*——————————————————————————————————————————————————————————
          here starts the Michel electron selection loop (track loop)
         —————————————————————————————————————————————————————————*/
+       
        if(GoodMuExists)
        {
            //Another loop which loops through all the reconstructed tracks for the Michel selection
@@ -375,7 +402,7 @@ void mu_sim_mely_class::Loop()
                    continue;
                
                //define local variables inside the loop for computing and calculation usage.
-               float stposx, stposy, stposz, endposx, endposy, endposz, trklen, trk_score, trk_pid, trk_recoE_y, mcvx, mcvy, mcvz, mcendx, mcendy, mcendz, mcE, mc_michel_E, mcpdg, val_mu_endposx, val_mu_endposy, val_mu_endposz;
+               float stposx, stposy, stposz, endposx, endposy, endposz, trklen, trk_score, trk_pid, trk_recoE_y, mcvx, mcvy, mcvz, mcendx, mcendy, mcendz, mcE, mc_michel_E, mcpdg, val_mu_endposx, val_mu_endposy, val_mu_endposz, shr_stx, shr_sty, shr_stz, shr_dedx, shr_dedx_cali;
                stposx = (*trk_sce_start_x_v)[itrack];
                stposy = (*trk_sce_start_y_v)[itrack];
                stposz = (*trk_sce_start_z_v)[itrack];
@@ -397,25 +424,36 @@ void mu_sim_mely_class::Loop()
                val_mu_endposx = mu_endposx[goodmuonindex[0]];
                val_mu_endposy = mu_endposy[goodmuonindex[0]];
                val_mu_endposz = mu_endposz[goodmuonindex[0]];
+               shr_stx = shr_start_x;
+               shr_sty = shr_start_y;
+               shr_stz = shr_start_z;
+               shr_dedx = shr_dedx_Y;
+               shr_dedx_cali = shr_dedx_Y_cali;
+               
                
                //Selection to make sure no glitching non-realistic values
-               if(stposx>0 && stposy>-116.5 && stposz>0 && endposx>0 && endposy>-116.5 && endposz>0)
+               if(stposx>low_edge_x && stposy>bottom_edge_y && stposz>low_edge_z && endposx>low_edge_x && endposy>bottom_edge_y && endposz>low_edge_z)
                {
                    //track length of each tracks can be calculated with default distance formula
                    trklen = calc_len(stposx,stposy,stposz,endposx,endposy,endposz);
                    
+                   
+                   
                    //the fiducial volume selection, make sure the y-value are all within the detector (since ME are expected to be within the detector)
-                   if(stposx>10 && stposx<246.4 && endposx>10 && endposx<246.4 && stposz>10 && stposz<1026.8 && endposz>10 && endposz<1026.8 && stposy<105 && stposy>-105 && endposy>-105 && endposy<105 )
+                   if(stposx>FV_low_x && stposx<FV_high_x && endposx>FV_low_x && endposx<FV_high_x && stposz>FV_low_z && stposz<FV_high_z && endposz>FV_low_z && endposz<FV_high_z && stposy<michel_FV_high_y && stposy>michel_FV_low_y && endposy>michel_FV_low_y && endposy<michel_FV_high_y)
                    {
+                       
                        //create two var for storing the distance value between the muon endpoint we stored and the start/end positions. The shorter distance var will be the gap between reco muon track and reco Michel shower
                        float mu_michel_st_dist = calc_len(val_mu_endposx,val_mu_endposy,val_mu_endposz,stposx,stposy,stposz);
+                       
+                       
                        float mu_michel_end_dist = calc_len(val_mu_endposx,val_mu_endposy,val_mu_endposz,endposx,endposy,endposz);
                        
                        
-                       //compare the two dist and determine the correct gap between muon and michel
-                       float mu_michel_gap = (mu_michel_end_dist<mu_michel_st_dist) ? mu_michel_end_dist : mu_michel_st_dist;
                        
-                       cout<< mu_michel_gap << endl;
+                       //compare the two dist and determine the correct gap between muon and michel
+                       float mu_michel_gap = (mu_michel_end_dist < mu_michel_st_dist) ? mu_michel_end_dist : mu_michel_st_dist;
+                       
                        
                        h_mu_michel_gap -> Fill(mu_michel_gap);
                        
@@ -464,6 +502,12 @@ void mu_sim_mely_class::Loop()
                                    h_michel_ly_reco_x -> Fill(trk_mid_x,michel_reco_ly);
                                    h_michel_ly_mc_x -> Fill(trk_mid_x,michel_mc_ly);
                                    
+                                   //here investigate the events in the first bin of h_michel_ly_reco_x
+                                   if(trk_mid_x<25)
+                                   {
+                                       file1 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15) << stposx << setw(15) << stposy << setw(15) << stposz << setw(15) << endposx << setw(15) << endposy << setw(15) << endposz << setw(15) << shr_stx << setw(15) << shr_sty << setw(15) << shr_stz << setw(15) << shr_dedx_cali << setw(15) << trk_score << setw(15) << mu_michel_gap << trk_recoE_y << endl;
+                                   }
+                                   
                                }//end of ensuring no division by 0
                                
                            }//end of flash-matching condition
@@ -482,6 +526,9 @@ void mu_sim_mely_class::Loop()
     
     //here, linearly fit the 2d muon mc-reco energy histogram
     h2d_mu_mc_v_reco_E -> Fit("pol1","","",200,600);
+    
+    //closing particle information .txt files
+        file1.close();
     
     //Drawing and formatting plots/histograms starts here
     TCanvas* c1 = new TCanvas("c1");
@@ -801,8 +848,8 @@ void mu_sim_mely_class::Loop()
     TCanvas* c20 = new TCanvas("c20");
     c20 -> cd();
     h2d_mu_mc_v_reco_E -> Draw("colz");
-    h2d_mu_mc_v_reco_E -> GetYaxis() -> SetTitle("MC Energy (MeV)");
-    h2d_mu_mc_v_reco_E -> GetXaxis() -> SetTitle("Reco Track Energy (MeV)");
+    h2d_mu_mc_v_reco_E -> GetXaxis() -> SetTitle("MC Energy (MeV)");
+    h2d_mu_mc_v_reco_E -> GetYaxis() -> SetTitle("Reco Track Energy (MeV)");
     h2d_mu_mc_v_reco_E -> GetZaxis() -> SetTitle("Number of Events");
     gStyle -> SetOptStat(10);
     //print to .root file and pdf
@@ -812,8 +859,8 @@ void mu_sim_mely_class::Loop()
     TCanvas* c21 = new TCanvas("c21");
     c21 -> cd();
     h2d_michel_mc_v_reco_E -> Draw("colz");
-    h2d_michel_mc_v_reco_E -> GetYaxis() -> SetTitle("MC Energy (MeV)");
-    h2d_michel_mc_v_reco_E -> GetXaxis() -> SetTitle("Reco Track Energy (MeV)");
+    h2d_michel_mc_v_reco_E -> GetXaxis() -> SetTitle("MC Energy (MeV)");
+    h2d_michel_mc_v_reco_E -> GetYaxis() -> SetTitle("Reco Track Energy (MeV)");
     h2d_michel_mc_v_reco_E -> GetZaxis() -> SetTitle("Number of Events");
     gStyle -> SetOptStat(10);
     //print to .root file and pdf
@@ -917,11 +964,21 @@ void mu_sim_mely_class::Loop()
     h_mu_trk_E -> GetYaxis() -> SetTitle("Number of Events");
     gStyle -> SetOptStat(10);
     //print to .root file and pdf
-    c31-> Print("plots.ps)");
-    myFile -> WriteObject(c31, "Muonl Reco Track Energy");
+    c31 -> Print("plots.ps");
+    myFile -> WriteObject(c31, "Muon Reco Track Energy");
+    
+    
+    //test
+    TCanvas* c32 = new TCanvas("c32");
+    c32 -> cd();
+    h_startposx_fv -> Draw();
+    c32 -> Print("plots.ps");
+    
+    TCanvas* c33 = new TCanvas("c33");
+    c33 -> cd();
+    h_startposx_st -> Draw();
+    c33 -> Print("plots.ps)");
+   
 
     
 } //end of the selection analyzer class
-
-
-
