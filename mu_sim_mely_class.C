@@ -167,6 +167,10 @@ void mu_sim_mely_class::Loop()
     TProfile* h_michel_ly_reco_x = new TProfile("h_michel_ly_reco_x","Total Light Yield Measurement Using Reconstructed MC Michel Electrons",10,0,256.4,"");
     TProfile* h_michel_ly_mc_x = new TProfile("h_michel_ly_mc_x","Total Light Yield Measurement Using MC Michel Electrons (True)",10,0,256.4,"");
     
+    //empty histo for shr_dedx vs the reconstructed track energy of the Michel
+    TH2F* h2d_michel_shrdedx_v_reco_E = new TH2F("h2d_michel_shrdedx_v_reco_E","Michel Electron Shr_dedx vs Reconstructed Energy",100,0,150,0,15);
+    TH2F* h2d_michel_shrdedxcali_v_reco_E = new TH2F("h2d_michel_shrdedxcali_v_reco_E","Michel Electron Shr_dedx_cali vs Reconstructed Energy",100,0,150,0,15);
+    
     //Create a root file that stores all output plots
     unique_ptr<TFile> myFile(TFile::Open("sim_analyz_outputs.root", "RECREATE"));
     cout << "An empty .root file created for storing output plots." << endl;
@@ -194,6 +198,10 @@ void mu_sim_mely_class::Loop()
     //create and open txt file for storing Michel electron events in the first tall bin in reco LY
     fstream file1;
     file1.open("1st_bin_reco_LY_Michel_info.txt", ios::app | ios::out);
+    
+    //create and open txt file for storing information of the Michel electron events that has an higher-than-expected reconstructed energy (>50 MeV)
+    fstream greater_than_50;
+    greater_than_50.open("michel_greater_than_50mev.txt", ios::app | ios::out);
     
     
    //getting all the event entries from the TTree
@@ -402,7 +410,7 @@ void mu_sim_mely_class::Loop()
                    continue;
                
                //define local variables inside the loop for computing and calculation usage.
-               float stposx, stposy, stposz, endposx, endposy, endposz, trklen, trk_score, trk_pid, trk_recoE_y, mcvx, mcvy, mcvz, mcendx, mcendy, mcendz, mcE, mc_michel_E, mcpdg, val_mu_endposx, val_mu_endposy, val_mu_endposz, shr_stx, shr_sty, shr_stz, shr_dedx, shr_dedx_cali;
+               float stposx, stposy, stposz, endposx, endposy, endposz, trklen, trk_score, trk_pid, trk_recoE_u, trk_recoE_v, trk_recoE_y, mcvx, mcvy, mcvz, mcendx, mcendy, mcendz, mcE, mc_michel_E, mcpdg, val_mu_endposx, val_mu_endposy, val_mu_endposz, shr_stx, shr_sty, shr_stz, shr_dedx, shr_dedx_cali;
                stposx = (*trk_sce_start_x_v)[itrack];
                stposy = (*trk_sce_start_y_v)[itrack];
                stposz = (*trk_sce_start_z_v)[itrack];
@@ -411,6 +419,8 @@ void mu_sim_mely_class::Loop()
                endposz = (*trk_sce_end_z_v)[itrack];
                trk_score = (*trk_score_v)[itrack];
                trk_pid = (*trk_llr_pid_score_v)[itrack];
+               trk_recoE_u = (*trk_calo_energy_u_v)[itrack];
+               trk_recoE_v = (*trk_calo_energy_v_v)[itrack];
                trk_recoE_y = (*trk_calo_energy_y_v)[itrack];
                mcvx = (*mc_vx)[itrack];
                mcvy = (*mc_vy)[itrack];
@@ -498,16 +508,25 @@ void mu_sim_mely_class::Loop()
                                    float michel_mc_ly = tot_pe_per_trk/mc_michel_E;
                                    float trk_mid_x = (stposx+endposx)/2.;
                                                                       
-                                   //fill LY plot for the muons
+                                   //fill LY plot for the michel electrons
                                    h_michel_ly_reco_x -> Fill(trk_mid_x,michel_reco_ly);
                                    h_michel_ly_mc_x -> Fill(trk_mid_x,michel_mc_ly);
                                    
                                    //here investigate the events in the first bin of h_michel_ly_reco_x
                                    if(trk_mid_x<25)
                                    {
-                                       file1 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15) << stposx << setw(15) << stposy << setw(15) << stposz << setw(15) << endposx << setw(15) << endposy << setw(15) << endposz << setw(15) << shr_stx << setw(15) << shr_sty << setw(15) << shr_stz << setw(15) << shr_dedx_cali << setw(15) << trk_score << setw(15) << mu_michel_gap << trk_recoE_y << endl;
+                                       file1 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15) << stposx << setw(15) << stposy << setw(15) << stposz << setw(15) << endposx << setw(15) << endposy << setw(15) << endposz << setw(15) << shr_stx << setw(15) << shr_sty << setw(15) << shr_stz << setw(15) << shr_dedx_cali << setw(15) << trk_score << setw(15) << mu_michel_gap << setw(15) << trk_recoE_u << setw(15) << trk_recoE_v << setw(15) << trk_recoE_y << endl;
                                    }
                                    
+                                   //here fill the txt file with info of Michel events with energy >50 MeV
+                                   if(trk_recoE_y>50)
+                                   {
+                                       greater_than_50 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15) << stposx << setw(15) << stposy << setw(15) << stposz << setw(15) << endposx << setw(15) << endposy << setw(15) << endposz << setw(15) << shr_stx << setw(15) << shr_sty << setw(15) << shr_stz << setw(15) << shr_dedx_cali << setw(15) << trk_score << setw(15) << mu_michel_gap << setw(10) << trk_recoE_u << setw(10) << trk_recoE_v << setw(10) << trk_recoE_y << endl;
+                                   }
+                                   
+                                   h2d_michel_shrdedx_v_reco_E -> Fill(trk_recoE_y,shr_dedx);
+                                   h2d_michel_shrdedxcali_v_reco_E -> Fill(trk_recoE_y,shr_dedx_cali);
+                                
                                }//end of ensuring no division by 0
                                
                            }//end of flash-matching condition
@@ -529,6 +548,7 @@ void mu_sim_mely_class::Loop()
     
     //closing particle information .txt files
         file1.close();
+        greater_than_50.close();
     
     //Drawing and formatting plots/histograms starts here
     TCanvas* c1 = new TCanvas("c1");
@@ -967,18 +987,12 @@ void mu_sim_mely_class::Loop()
     c31 -> Print("plots.ps");
     myFile -> WriteObject(c31, "Muon Reco Track Energy");
     
-    
-    //test
     TCanvas* c32 = new TCanvas("c32");
     c32 -> cd();
-    h_startposx_fv -> Draw();
-    c32 -> Print("plots.ps");
+    h2d_michel_shrdedx_v_reco_E -> Draw("colz");
     
     TCanvas* c33 = new TCanvas("c33");
     c33 -> cd();
-    h_startposx_st -> Draw();
-    c33 -> Print("plots.ps)");
-   
-
+    h2d_michel_shrdedxcali_v_reco_E -> Draw("colz");
     
 } //end of the selection analyzer class
