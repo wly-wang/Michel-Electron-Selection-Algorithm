@@ -148,6 +148,7 @@ void mu_sim_mely_class::Loop()
     
     //empty histo for Muon-Michel gap distance histo
     TH1F* h_mu_michel_gap = new TH1F("h_mu_michel_gap","Muon-Michel electron Gap Distance",100,0,1000);
+    TH1F* h_mu_michel_gap_final = new TH1F("h_mu_michel_gap_final","Muon-Michel electron Gap Distance",100,0,15);
     
     //empty histo for storing selected Michel information
     TH1F* h_startposx_michel = new TH1F("h_startposx_michel","Michel Electron Start Position (x)",100,-1,257);
@@ -158,7 +159,11 @@ void mu_sim_mely_class::Loop()
     TH1F* h_trk_pid_michel = new TH1F("h_trk_pid_michel","Michel Electron Track PID",100,-1,1);
     
     TH1F* h_michel_trk_E = new TH1F("h_michel_trk_E","Michel Electron Reco Track Energy (y)",100,0,300);
+    TH1F* h_michel_trk_E_u = new TH1F("h_michel_trk_E_u","Michel Electron Reco Track Energy (u)",100,0,300);
+    TH1F* h_michel_trk_E_v = new TH1F("h_michel_trk_E_v","Michel Electron Reco Track Energy (v)",100,0,300);
     h_michel_trk_E -> SetLineColor(kMagenta);
+    h_michel_trk_E_u -> SetLineColor(kRed);
+    h_trk_score_michel -> SetLineColor(kMagenta);
     
     TH2F* h2d_michel_mc_v_reco_E = new TH2F("h2d_michel_mc_v_reco_E","Michel Electron MC-Reco Energy Correlation",100,0,150,100,0,150);
     
@@ -168,8 +173,8 @@ void mu_sim_mely_class::Loop()
     TProfile* h_michel_ly_mc_x = new TProfile("h_michel_ly_mc_x","Total Light Yield Measurement Using MC Michel Electrons (True)",10,0,256.4,"");
     
     //empty histo for shr_dedx vs the reconstructed track energy of the Michel
-    TH2F* h2d_michel_shrdedx_v_reco_E = new TH2F("h2d_michel_shrdedx_v_reco_E","Michel Electron Shr_dedx vs Reconstructed Energy",100,0,150,0,15);
-    TH2F* h2d_michel_shrdedxcali_v_reco_E = new TH2F("h2d_michel_shrdedxcali_v_reco_E","Michel Electron Shr_dedx_cali vs Reconstructed Energy",100,0,150,0,15);
+    TH2F* h2d_michel_shrdedx_v_reco_E = new TH2F("h2d_michel_shrdedx_v_reco_E","Michel Electron Shr_dedx vs Reconstructed Energy",100,0,150,100,0,15);
+    TH2F* h2d_michel_shrdedxcali_v_reco_E = new TH2F("h2d_michel_shrdedxcali_v_reco_E","Michel Electron Shr_dedx_cali vs Reconstructed Energy",100,0,150,100,0,15);
     
     //Create a root file that stores all output plots
     unique_ptr<TFile> myFile(TFile::Open("sim_analyz_outputs.root", "RECREATE"));
@@ -203,6 +208,9 @@ void mu_sim_mely_class::Loop()
     fstream greater_than_50;
     greater_than_50.open("michel_greater_than_50mev.txt", ios::app | ios::out);
     
+    //create and open txt file for storing information of all the selected michel electron candidates
+    fstream all_michel;
+    all_michel.open("all_michel.txt", ios::app | ios::out);
     
    //getting all the event entries from the TTree
    Long64_t nentries = fChain->GetEntriesFast();
@@ -455,28 +463,16 @@ void mu_sim_mely_class::Loop()
                        
                        //create two var for storing the distance value between the muon endpoint we stored and the start/end positions. The shorter distance var will be the gap between reco muon track and reco Michel shower
                        float mu_michel_st_dist = calc_len(val_mu_endposx,val_mu_endposy,val_mu_endposz,stposx,stposy,stposz);
-                       
-                       
                        float mu_michel_end_dist = calc_len(val_mu_endposx,val_mu_endposy,val_mu_endposz,endposx,endposy,endposz);
-                       
-                       
                        
                        //compare the two dist and determine the correct gap between muon and michel
                        float mu_michel_gap = (mu_michel_end_dist < mu_michel_st_dist) ? mu_michel_end_dist : mu_michel_st_dist;
-                       
                        
                        h_mu_michel_gap -> Fill(mu_michel_gap);
                        
                        //set a maximum gap limit as part of michel selection
                        if(mu_michel_gap<10 && trk_score<0.5)
                        {
-                           h_startposx_michel -> Fill(stposx);
-                           h_startposy_michel -> Fill(stposy);
-                           h_startposz_michel -> Fill(stposz);
-                           h_reco_trklen_michel -> Fill(trklen);
-                           h_trk_score_michel -> Fill(trk_score);
-                           h_trk_pid_michel -> Fill(trk_pid);
-                           h_michel_trk_E -> Fill(trk_recoE_y);
                            if(mc_michel_E!=0)
                            {
                                h2d_michel_mc_v_reco_E -> Fill(mc_michel_E,trk_recoE_y);
@@ -512,6 +508,21 @@ void mu_sim_mely_class::Loop()
                                    h_michel_ly_reco_x -> Fill(trk_mid_x,michel_reco_ly);
                                    h_michel_ly_mc_x -> Fill(trk_mid_x,michel_mc_ly);
                                    
+                                   //fill up the information plots for the selected Michel electrons
+                                   h_startposx_michel -> Fill(stposx);
+                                   h_startposy_michel -> Fill(stposy);
+                                   h_startposz_michel -> Fill(stposz);
+                                   h_reco_trklen_michel -> Fill(trklen);
+                                   h_trk_score_michel -> Fill(trk_score);
+                                   h_trk_pid_michel -> Fill(trk_pid);
+                                   h_michel_trk_E -> Fill(trk_recoE_y);
+                                   h_michel_trk_E_u -> Fill(trk_recoE_u);
+                                   h_michel_trk_E_v -> Fill(trk_recoE_v);
+                                   h_mu_michel_gap_final -> Fill(mu_michel_gap);
+                                   
+                                   //here is for counting the number of michel electrons we have
+                                   all_michel << left << setw(10) << run << setw(10) << sub << setw(10) << evt << endl;
+                                   
                                    //here investigate the events in the first bin of h_michel_ly_reco_x
                                    if(trk_mid_x<25)
                                    {
@@ -523,6 +534,7 @@ void mu_sim_mely_class::Loop()
                                    {
                                        greater_than_50 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15) << stposx << setw(15) << stposy << setw(15) << stposz << setw(15) << endposx << setw(15) << endposy << setw(15) << endposz << setw(15) << shr_stx << setw(15) << shr_sty << setw(15) << shr_stz << setw(15) << shr_dedx_cali << setw(15) << trk_score << setw(15) << mu_michel_gap << setw(10) << trk_recoE_u << setw(10) << trk_recoE_v << setw(10) << trk_recoE_y << endl;
                                    }
+                                   
                                    
                                    h2d_michel_shrdedx_v_reco_E -> Fill(trk_recoE_y,shr_dedx);
                                    h2d_michel_shrdedxcali_v_reco_E -> Fill(trk_recoE_y,shr_dedx_cali);
@@ -547,8 +559,9 @@ void mu_sim_mely_class::Loop()
     h2d_mu_mc_v_reco_E -> Fit("pol1","","",200,600);
     
     //closing particle information .txt files
-        file1.close();
-        greater_than_50.close();
+    file1.close();
+    greater_than_50.close();
+    all_michel.close();
     
     //Drawing and formatting plots/histograms starts here
     TCanvas* c1 = new TCanvas("c1");
@@ -893,9 +906,6 @@ void mu_sim_mely_class::Loop()
     h_mu_michel_gap -> GetXaxis() -> SetTitle("Gap Distance (cm)");
     h_mu_michel_gap -> GetYaxis() -> SetTitle("Number of Events");
     gStyle -> SetOptStat(10);
-    //print to .root file and pdf
-    c22 -> Print("plots.ps");
-    myFile -> WriteObject(c22, "Muon-Michel Gap Distance");
     
     TCanvas* c23 = new TCanvas("c23");
     c23 -> cd();
@@ -989,10 +999,47 @@ void mu_sim_mely_class::Loop()
     
     TCanvas* c32 = new TCanvas("c32");
     c32 -> cd();
-    h2d_michel_shrdedx_v_reco_E -> Draw("colz");
+    h_michel_trk_E_u -> Draw();
+    h_michel_trk_E_u -> GetXaxis() -> SetTitle("Energy (MeV)");
+    h_michel_trk_E_u -> GetYaxis() -> SetTitle("Number of Events");
+    gStyle -> SetOptStat(10);
+    //print to .root file and pdf
+    c32 -> Print("plots.ps");
+    myFile -> WriteObject(c32, "Michel Electron Reconstructed Energy (u)");
     
     TCanvas* c33 = new TCanvas("c33");
     c33 -> cd();
+    h_michel_trk_E_v -> Draw();
+    h_michel_trk_E_v -> GetXaxis() -> SetTitle("Energy (MeV)");
+    h_michel_trk_E_v -> GetYaxis() -> SetTitle("Number of Events");
+    gStyle -> SetOptStat(10);
+    //print to .root file and pdf
+    c33 -> Print("plots.ps");
+    myFile -> WriteObject(c33, "Michel Electron Reconstructed Energy (v)");
+    
+    TCanvas* c34 = new TCanvas("c34");
+    c34 -> cd();
+    h2d_michel_shrdedx_v_reco_E -> Draw("colz");
+    h2d_michel_shrdedx_v_reco_E-> GetXaxis() -> SetTitle("Energy (MeV)");
+    h2d_michel_shrdedx_v_reco_E -> GetYaxis() -> SetTitle("dE/dx (MeV/cm)");
+    h2d_michel_shrdedx_v_reco_E -> GetZaxis() -> SetTitle("Number of Events");
+    
+    TCanvas* c35 = new TCanvas("c35");
+    c35 -> cd();
     h2d_michel_shrdedxcali_v_reco_E -> Draw("colz");
+    h2d_michel_shrdedxcali_v_reco_E-> GetXaxis() -> SetTitle("Energy (MeV)");
+    h2d_michel_shrdedxcali_v_reco_E -> GetYaxis() -> SetTitle("dE/dx (MeV/cm)");
+    h2d_michel_shrdedxcali_v_reco_E -> GetZaxis() -> SetTitle("Number of Events");
+    
+    
+    TCanvas* c36 = new TCanvas("c36");
+    c36 -> cd();
+    h_mu_michel_gap_final -> Draw();
+    h_mu_michel_gap_final -> GetXaxis() -> SetTitle("Gap Distance (cm)");
+    h_mu_michel_gap_final -> GetYaxis() -> SetTitle("Number of Events");
+    gStyle -> SetOptStat(10);
+    //print to .root file and pdf
+    c36 -> Print("plots.ps");
+    myFile -> WriteObject(c36, "Muon-Michel Gap Distance");
     
 } //end of the selection analyzer class
