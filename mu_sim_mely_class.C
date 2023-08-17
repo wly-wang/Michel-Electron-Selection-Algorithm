@@ -173,12 +173,9 @@ void mu_sim_mely_class::Loop()
     TProfile* h_michel_ly_mc_x = new TProfile("h_michel_ly_mc_x","Total Light Yield Measurement Using MC Michel Electrons (True)",10,0,256.4,"");
     
     //empty histo for shr_dedx vs the reconstructed track energy of the Michel
-    TH2F* h2d_michel_shrdedx_v_reco_E = new TH2F("h2d_michel_shrdedx_v_reco_E","Michel Electron Shr_dedx vs Reconstructed Energy",100,0,150,100,0,15);
-    TH2F* h2d_michel_shrdedxcali_v_reco_E = new TH2F("h2d_michel_shrdedxcali_v_reco_E","Michel Electron Shr_dedx_cali vs Reconstructed Energy",100,0,150,100,0,15);
+    TH2F* h2d_michel_shrdedx_v_reco_E = new TH2F("h2d_michel_shrdedx_v_reco_E","Michel Electron Shr_dedx vs Reconstructed Energy",100,0,150,100,0,60);
+    TH2F* h2d_michel_shrdedxcali_v_reco_E = new TH2F("h2d_michel_shrdedxcali_v_reco_E","Michel Electron Shr_dedx_cali vs Reconstructed Energy",100,0,150,100,0,60);
     
-    //Create a root file that stores all output plots
-    unique_ptr<TFile> myFile(TFile::Open("sim_analyz_outputs.root", "RECREATE"));
-    cout << "An empty .root file created for storing output plots." << endl;
     
     //now define a set of geometric variables that'll be used for the selection
     float low_edge_x = 0;
@@ -471,7 +468,7 @@ void mu_sim_mely_class::Loop()
                        h_mu_michel_gap -> Fill(mu_michel_gap);
                        
                        //set a maximum gap limit as part of michel selection
-                       if(mu_michel_gap<10 && trk_score<0.5)
+                       if(mu_michel_gap<3. && trk_score<0.5)
                        {
                            if(mc_michel_E!=0)
                            {
@@ -554,6 +551,16 @@ void mu_sim_mely_class::Loop()
        }//end of goodmuexist condition
        
    } //end of the entry loop that loops through all event entries
+    
+    //Create a root file that stores all output plots
+    unique_ptr<TFile> myFile(TFile::Open("sim_analyz_outputs.root", "RECREATE"));
+    cout << "An empty .root file created for storing output plots." << endl;
+    
+    //write in ly histograms
+    myFile -> WriteObject(h_mu_ly_reco_x, "");
+    myFile -> WriteObject(h_mu_ly_mc_x, "");
+    myFile -> WriteObject(h_michel_ly_reco_x, "");
+    myFile -> WriteObject(h_michel_ly_mc_x, "");
     
     //here, linearly fit the 2d muon mc-reco energy histogram
     h2d_mu_mc_v_reco_E -> Fit("pol1","","",200,600);
