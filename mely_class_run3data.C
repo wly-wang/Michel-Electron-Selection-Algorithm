@@ -156,6 +156,9 @@ void mely_class_run3data::Loop()
     TH1F* h_michel_flash_trk_dist = new TH1F("h_michel_flash_trk_dist","Distance Between the Michel Electron Tracks and Flashes",100,0,350);
     TProfile* h_michel_ly_reco_x = new TProfile("h_michel_ly_reco_x","Total Light Yield Measurement Using Reconstructed MC Michel Electrons  (Run3)",10,0,256.4,"");
 
+    //creating additional histos for checking why ly isn't producing for our run3 data
+    TH1F* h_mu_flash_trk_devi = new TH1F("h_mu_flash_trk_devi","Proportion deviation b/w mu flash and trk",100,0,50);
+    TH1F* h_mu_reco_ly_value = new TH1F("h_mu_reco_ly_value","mu light yield values",100,0,50);
     //now define a set of geometric variables that'll be used for the selection
     float low_edge_x = 0;
     float high_edge_x = 256.4;
@@ -188,7 +191,7 @@ void mely_class_run3data::Loop()
    Long64_t nentries = fChain->GetEntriesFast();
    Long64_t nbytes = 0, nb = 0;
    //the loop that loops through all of the event entries in the TTree
-   for (Long64_t jentry=0; jentry<nentries;jentry++)
+   for (Long64_t jentry=0; jentry<50000.;jentry++)
    {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
@@ -299,12 +302,16 @@ void mely_class_run3data::Loop()
                            //now, match the flash with its corresponding muon track, and the light yield measurement will be done within this condition
                            if (mu_flash_trk_dist<160. && calc_devi_flash_trk(flash_zcenter,flash_zwidth,stposz,endposz)<=1.)
                            {
+                            
                                //define a var for the total number of PEs
                                float tot_pe_per_trk = 0;
                                //now calculate this value by looping through all 32 pmt and add the PEs together
                                for (unsigned int PMT_no=0; PMT_no!=32; ++PMT_no)
                                {
-                                   tot_pe_per_trk += flash_pe_v->at(PMT_no)*(20./gain_ampl_v->at(PMT_no));
+                                   if ((*flash_pe_v)[PMT_no]!=0 && (*gain_ampl_v)[PMT_no]!=0)
+                                   {
+                                       tot_pe_per_trk += flash_pe_v->at(PMT_no)*(20./gain_ampl_v->at(PMT_no));
+                                   }
                                }//end of all pmt loop for calculating the tot no. of PEs
                                
                                //now calculate the total LY with reconstructed
@@ -373,9 +380,7 @@ void mely_class_run3data::Loop()
                {
                    //track length of each tracks can be calculated with default distance formula
                    trklen = calc_len(stposx,stposy,stposz,endposx,endposy,endposz);
-                   
-                   
-                   
+    
                    //the fiducial volume selection, make sure the y-value are all within the detector (since ME are expected to be within the detector)
                    if(stposx>FV_low_x && stposx<FV_high_x && endposx>FV_low_x && endposx<FV_high_x && stposz>FV_low_z && stposz<FV_high_z && endposz>FV_low_z && endposz<FV_high_z && stposy<michel_FV_high_y && stposy>michel_FV_low_y && endposy>michel_FV_low_y && endposy<michel_FV_high_y)
                    {
@@ -409,7 +414,10 @@ void mely_class_run3data::Loop()
                                //calculate and sum up all the PEs from all 32 PMTs
                                for (unsigned int PMT_no=0; PMT_no!=32; ++PMT_no)
                                {
-                                   tot_pe_per_trk += flash_pe_v->at(PMT_no)*(20./gain_ampl_v->at(PMT_no));
+                                   if ((*flash_pe_v)[PMT_no]!=0 && (*gain_ampl_v)[PMT_no]!=0)
+                                   {
+                                       tot_pe_per_trk += flash_pe_v->at(PMT_no)*(20./gain_ampl_v->at(PMT_no));
+                                   }
                                }//end of all pmt loop for calculating the tot no. of PEs in the current track
                                
                                //now calculate the total LY with reconstructed
@@ -788,5 +796,6 @@ void mely_class_run3data::Loop()
     //print to .root file and pdf
     c36 -> Print("plots.ps");
     myFile -> WriteObject(c36, "Muon-Michel Gap Distance");
+    
     
 } //end of the selection analyzer class
