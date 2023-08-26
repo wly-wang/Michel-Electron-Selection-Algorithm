@@ -395,7 +395,7 @@ void mely_class_run3data::Loop()
                        h_mu_michel_gap -> Fill(mu_michel_gap);
                        
                        //set a maximum gap limit as part of michel selection
-                       if(mu_michel_gap<10. && trk_score<0.5)
+                       if(mu_michel_gap<3. && trk_score<0.5)
                        {
                            
                            /*——————————————————————————————————————
