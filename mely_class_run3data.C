@@ -191,7 +191,7 @@ void mely_class_run3data::Loop()
    Long64_t nentries = fChain->GetEntriesFast();
    Long64_t nbytes = 0, nb = 0;
    //the loop that loops through all of the event entries in the TTree
-   for (Long64_t jentry=0; jentry<50000.;jentry++)
+   for (Long64_t jentry=0; jentry<nentries;jentry++)
    {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
