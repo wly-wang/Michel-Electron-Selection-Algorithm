@@ -156,6 +156,14 @@ void mely_class_run1data::Loop()
     TH1F* h_michel_flash_trk_dist = new TH1F("h_michel_flash_trk_dist","Distance Between the Michel Electron Tracks and Flashes",100,0,350);
     TProfile* h_michel_ly_reco_x = new TProfile("h_michel_ly_reco_x","Total Light Yield Measurement Using Reconstructed MC Michel Electrons  (Run1)",10,0,256.4,"");
 
+    //———
+    TH1F* h_mu_ly_bin1 = new TH1F("h_mu_ly_bin1","Muon LY for bin 1 (x=0-25.64cm)",100,0,150);
+    TH1F* h_mu_ly_bin2 = new TH1F("h_mu_ly_bin2","Muon LY for bin 2 (x=25.64-51.28cm)",100,0,400);
+    TH1F* h_mu_ly_bin3 = new TH1F("h_mu_ly_bin3","Muon LY for bin 3 (x=51.28-76.92cm)",100,0,160);
+    TH1F* h_mu_ly_bin4 = new TH1F("h_mu_ly_bin4","Muon LY for bin 4 (x=76.92-102.56cm)",100,0,150);
+    TH1F* h_mu_ly_bin10 = new TH1F("h_mu_ly_bin10","Muon LY for bin 10 (x=230.76-256.4cm)",100,0,150);
+    TH1F* h_mu_ly_bin7 = new TH1F("h_mu_ly_bin7","Muon LY for bin 7 (x=153.84-179.48cm)",100,0,180);
+    
     //now define a set of geometric variables that'll be used for the selection
     float low_edge_x = 0;
     float high_edge_x = 256.4;
@@ -183,6 +191,17 @@ void mely_class_run1data::Loop()
     //create and open txt file for storing information of all the selected michel electron candidates
     fstream all_michel;
     all_michel.open("all_michel_run1.txt", ios::app | ios::out);
+    
+    fstream above_100_mu_ly_run1_bin1;
+    above_100_mu_ly_run1_bin1.open("above_100_mu_ly_run1_bin1.txt", ios::app | ios::out);
+    fstream above_100_mu_ly_run1_bin2;
+    above_100_mu_ly_run1_bin2.open("above_100_mu_ly_run1_bin2.txt", ios::app | ios::out);
+    fstream above_100_mu_ly_run1_bin3;
+    above_100_mu_ly_run1_bin3.open("above_100_mu_ly_run1_bin3.txt", ios::app | ios::out);
+    fstream above_100_mu_ly_run1_bin4;
+    above_100_mu_ly_run1_bin4.open("above_100_mu_ly_run1_bin4.txt", ios::app | ios::out);
+    fstream above_100_mu_ly_run1_bin10;
+    above_100_mu_ly_run1_bin10.open("above_100_mu_ly_run1_bin10.txt", ios::app | ios::out);
     
    //getting all the event entries from the TTree
    Long64_t nentries = fChain->GetEntriesFast();
@@ -308,14 +327,62 @@ void mely_class_run1data::Loop()
                                }//end of all pmt loop for calculating the tot no. of PEs
                                
                                //now calculate the total LY with reconstructed
-                               if(tot_pe_per_trk>0 && trk_recoE_y>0 )
+                               if(tot_pe_per_trk>0 && trk_recoE_y>0)
                                {
                                    float mu_reco_ly = tot_pe_per_trk/trk_recoE_y;
                                    float trk_mid_x = (stposx+endposx)/2.;
                                    
                                    //fill LY plot for the muons
-                                   h_mu_ly_reco_x -> Fill(trk_mid_x,mu_reco_ly);
-                
+                                   if(mu_reco_ly<200)
+                                   {
+                                       h_mu_ly_reco_x -> Fill(trk_mid_x,mu_reco_ly);
+                                   }
+                                   if(trk_mid_x>0 && trk_mid_x<=25.64)
+                                   {
+                                       h_mu_ly_bin1 -> Fill(mu_reco_ly);
+                                       if(mu_reco_ly>100)
+                                       {
+                                           above_100_mu_ly_run1_bin1 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15)<< mu_reco_ly << setw(15) << trk_mid_x << endl;
+                                       }
+                                   }
+                                   if(trk_mid_x>25.64 && trk_mid_x<=51.28)
+                                   {
+                                       h_mu_ly_bin2 -> Fill(mu_reco_ly);
+                                       if(mu_reco_ly>100)
+                                       {
+                                           above_100_mu_ly_run1_bin2 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15)<< mu_reco_ly << setw(15) << trk_mid_x << endl;
+                                       }
+                                   }
+                                   if(trk_mid_x>51.28 && trk_mid_x<=76.92)
+                                   {
+                                       h_mu_ly_bin3 -> Fill(mu_reco_ly);
+                                       if(mu_reco_ly>100)
+                                       {
+                                           above_100_mu_ly_run1_bin3 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15)<< mu_reco_ly << setw(15) << trk_mid_x << endl;
+                                       }
+                                   }
+                                   if(trk_mid_x>76.92 && trk_mid_x<=102.56)
+                                   {
+                                       h_mu_ly_bin4 -> Fill(mu_reco_ly);
+                                       if(mu_reco_ly>100)
+                                       {
+                                           above_100_mu_ly_run1_bin4 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15)<< mu_reco_ly << setw(15) << trk_mid_x << setw(10) << trklen << setw(10) << trk_pid << setw(10) << trk_score << endl;
+                                       }
+                                   }
+                                   if(trk_mid_x>230.76 && trk_mid_x<=256.4)
+                                   {
+                                       h_mu_ly_bin10 -> Fill(mu_reco_ly);
+                                       if(mu_reco_ly>100)
+                                       {
+                                           above_100_mu_ly_run1_bin10 << left << setw(10) << run << setw(10) << sub << setw(10) << evt << setw(15)<< mu_reco_ly << setw(15) << trk_mid_x << setw(15) <<stposx << setw(15) << stposy << setw(15) << stposz << setw(15) << endposx << setw(15) << endposy << setw(15) << endposz << setw(15) << trk_score << setw(10) << trk_recoE_y << endl;
+                                       }
+                                   }
+                                   if(trk_mid_x>153.84 && trk_mid_x<=179.48)
+                                   {
+                                       h_mu_ly_bin7 -> Fill(mu_reco_ly);
+                                   }
+                        
+                                   
                                }//end of ensuring no division by 0
                             
                            }//end of muon flash-matching condition
@@ -471,6 +538,11 @@ void mely_class_run1data::Loop()
     //closing particle information .txt files
     greater_than_50.close();
     all_michel.close();
+    above_100_mu_ly_run1_bin1.close();
+    above_100_mu_ly_run1_bin2.close();
+    above_100_mu_ly_run1_bin3.close();
+    above_100_mu_ly_run1_bin4.close();
+    above_100_mu_ly_run1_bin10.close();
     
     //Drawing and formatting plots/histograms starts here
     TCanvas* c10 = new TCanvas("c10");
@@ -789,4 +861,27 @@ void mely_class_run1data::Loop()
     c36 -> Print("plots.ps");
     myFile -> WriteObject(c36, "Muon-Michel Gap Distance");
     
+    TCanvas* c37 = new TCanvas("c37");
+    c37 -> cd();
+    h_mu_ly_bin1 -> Draw();
+    
+    TCanvas* c38 = new TCanvas("c38");
+    c38 -> cd();
+    h_mu_ly_bin2 -> Draw();
+    
+    TCanvas* c39 = new TCanvas("c39");
+    c39 -> cd();
+    h_mu_ly_bin3 -> Draw();
+    
+    TCanvas* c40 = new TCanvas("c40");
+    c40 -> cd();
+    h_mu_ly_bin4 -> Draw();
+    
+    TCanvas* c41 = new TCanvas("c41");
+    c41 -> cd();
+    h_mu_ly_bin10 -> Draw();
+    
+    TCanvas* c42 = new TCanvas("c42");
+    c42 -> cd();
+    h_mu_ly_bin7 -> Draw();
 } //end of the selection analyzer class
